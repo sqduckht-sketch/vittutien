@@ -1,11 +1,10 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
 const players = new Map();
 
-// Hàm khởi tạo nhân vật (5 cấp tư chất)
 function createPlayer(id, name) {
     const rand = Math.random();
     let tuChat, multiplier;
@@ -16,20 +15,17 @@ function createPlayer(id, name) {
     else { tuChat = "🤡 Ngu Si Đần Độn"; multiplier = 0.5; }
 
     return {
-        id: id, name: name, level: 1, exp: 0, expNeeded: 100,
+        id, name, level: 1, exp: 0, expNeeded: 100,
         realm: "Luyện Khí Tầng 1", linhThach: 10, lastTrain: 0,
-        daThachAnh: 0, tuChat: tuChat, multiplier: multiplier
+        daThachAnh: 0, tuChat, multiplier
     };
 }
 
 const realms = ["Luyện Khí", "Trúc Cơ", "Kết Đan", "Nguyên Anh", "Hóa Thần", "Luyện Hư", "Hợp Thể", "Độ Kiếp", "Đại Thừa"];
 function updateRealm(p) {
     let rIdx = Math.floor((p.level - 1) / 10);
-    let sLvl = ((p.level - 1) % 10) + 1;
-    p.realm = rIdx >= realms.length ? "Tiên Nhân" : `${realms[rIdx]} Tầng ${sLvl}`;
+    p.realm = rIdx >= realms.length ? "Tiên Nhân" : `${realms[rIdx]} Tầng ${((p.level - 1) % 10) + 1}`;
 }
-
-client.on('ready', () => console.log('Bot Vịt Tu Tiên đã xuất thế!'));
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.startsWith('!')) return;
@@ -37,39 +33,52 @@ client.on('messageCreate', async (message) => {
     const command = args.shift().toLowerCase();
     const userId = message.author.id;
 
-    // Lệnh Đăng ký
     if (command === 'dangky') {
         if (players.has(userId)) return message.reply('❌ Đạo hữu đã có tên trong tiên giới!');
         let p = createPlayer(userId, message.author.username);
         players.set(userId, p);
-        return message.reply(`🎉 Chào mừng **${p.name}**!\n📜 Tư chất: **${p.tuChat}** (Hệ số EXP: x${p.multiplier})`);
+        return message.reply(`🎉 Chào mừng **${p.name}**!\n📜 Tư chất: **${p.tuChat}** (x${p.multiplier})`);
     }
 
-    if (!players.has(userId)) return message.reply('⚠️ Hãy gõ `!dangky` để nhập môn trước nhé!');
+    if (!players.has(userId)) return message.reply('⚠️ Hãy gõ `!dangky` để nhập môn trước!');
     let p = players.get(userId);
 
-    // Lệnh Status
+    // Lệnh HELP (Embed đẹp mắt)
+    if (command === 'help') {
+        const embed = new EmbedBuilder()
+            .setColor(0x0099FF)
+            .setTitle('📜 TÀNG KINH CÁC - VỊT TU TIÊN')
+            .setDescription('Chào mừng đạo hữu đến với thế giới tu tiên. Dưới đây là các công pháp hiện có:')
+            .addFields(
+                { name: '✨ !dangky', value: 'Khởi tạo nhân vật & nhận tư chất.', inline: false },
+                { name: '🎒 !tui', value: 'Xem thông tin & túi đồ cá nhân.', inline: false },
+                { name: '🧘‍♂️ !tuluyen', value: 'Tĩnh tọa tăng tu vi (EXP).', inline: false },
+                { name: '⛏️ !dao', value: 'Đào khoáng (Linh thạch/Đá Thạch Anh).', inline: false },
+                { name: '🎁 !mo', value: 'Khai mở Đá Thạch Anh nhận quà.', inline: false },
+                { name: '⚔️ !pk @user', value: 'Thách đấu cướp Linh thạch.', inline: false }
+            )
+            .setFooter({ text: 'Chúc đạo hữu sớm ngày thành Tiên!' });
+        return message.reply({ embeds: [embed] });
+    }
+
     if (command === 'status' || command === 'profile' || command === 'tui') {
         updateRealm(p);
         return message.reply(`🎒 **${p.name}**\n🔮 Cảnh giới: ${p.realm}\n✨ Tu vi: ${p.exp}/${p.expNeeded}\n🧬 Tư chất: ${p.tuChat} (x${p.multiplier})\n💰 Linh thạch: ${p.linhThach}\n💎 Đá Thạch Anh: ${p.daThachAnh || 0}`);
     }
 
-    // Lệnh Tu Luyện
     if (command === 'tuluyen' || command === 'train') {
-        if (Date.now() - p.lastTrain < 15000) return message.reply(`⚠️ Đang nghẽn kinh mạch, chờ ${Math.ceil((15000 - (Date.now() - p.lastTrain))/1000)} giây nữa!`);
+        if (Date.now() - p.lastTrain < 15000) return message.reply(`⚠️ Đang nghẽn kinh mạch, chờ ${Math.ceil((15000 - (Date.now() - p.lastTrain))/1000)}s!`);
         let expGained = Math.floor((Math.random() * 16 + 15) * p.multiplier);
         p.exp += expGained; p.lastTrain = Date.now();
         if (p.exp >= p.expNeeded) { p.exp -= p.expNeeded; p.level += 1; p.expNeeded = Math.floor(p.expNeeded * 1.2); updateRealm(p); }
         return message.reply(`🧘‍♂️ Nhận ${expGained} EXP. Cảnh giới: ${p.realm}`);
     }
 
-    // Lệnh Đào khoáng
     if (command === 'dao') {
         if (Math.random() < 0.3) { p.daThachAnh = (p.daThachAnh || 0) + 1; message.reply('💎 Đào được Đá Thạch Anh!'); }
         else { let g = Math.floor(Math.random() * 30) + 10; p.linhThach += g; message.reply(`⛏️ Đào được ${g} Linh thạch.`); }
     }
 
-    // Lệnh Mở đá
     if (command === 'mo') {
         if (!p.daThachAnh || p.daThachAnh <= 0) return message.reply('❌ Không có Đá Thạch Anh!');
         p.daThachAnh -= 1;
@@ -82,7 +91,6 @@ client.on('messageCreate', async (message) => {
         else { p.linhThach += 500; await msg.edit('👑 **ĐẠI VẬN MAY!** Mở được 500 Linh thạch!'); }
     }
 
-    // Lệnh PK
     if (command === 'pk') {
         let target = message.mentions.users.first();
         if (!target || !players.has(target.id)) return message.reply('Hãy tag người chơi!');
@@ -91,7 +99,6 @@ client.on('messageCreate', async (message) => {
         else message.reply(`🛡️ Thất bại!`);
     }
 
-    // Lệnh Admin
     if (command === 'adminbuff') {
         if (message.author.id !== '1126092277220122634') return message.reply('❌ Chỉ chủ nhân!');
         let type = args[0], amount = parseInt(args[1]);
