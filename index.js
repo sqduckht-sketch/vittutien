@@ -116,6 +116,18 @@ client.on('messageCreate', async (message) => {
 
 // === CHỖ ĐIỀN TOKEN CỦA BẠN ===
 // Hãy xóa chữ "TOKEN_CỦA_BẠN" ở dưới đi và dán mã Token Discord của bạn vào giữ hai dấu nháy đơn
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Vịt Tu Tiên is running!');
+});
+
+app.listen(port, () => {
+  console.log(`Server is listening on port ${port}`);
+});
+
 client.login(process.env.DISCORD_TOKEN);
 
 
