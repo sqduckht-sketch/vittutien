@@ -116,4 +116,5 @@ client.on('messageCreate', async (message) => {
 
 // === CHỖ ĐIỀN TOKEN CỦA BẠN ===
 // Hãy xóa chữ "TOKEN_CỦA_BẠN" ở dưới đi và dán mã Token Discord của bạn vào giữ hai dấu nháy đơn
-client.login('MTUyMTkxNDY5ODMzOTk3NTMwMQ.GqK2Lc.osXucWy2SHr30_Qmq2z41BrVski8mmJKLEVpP0');
+client.login('MTUyMTkxNDY5ODMzOTk3NTMwMQ.Gqv0e9.ABUdiOjAL0LeFVqehsNWgfz_YCNKAyRK0r_R2Y');
+
