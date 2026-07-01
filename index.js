@@ -69,6 +69,17 @@ client.on('messageCreate', async (message) => {
         reply += `===============================`;
         return message.reply(reply);
     }
+// LỆNH 4: XEM BẢNG XẾP HẠNG (!top)
+if (command === 'top') {
+    const sortedPlayers = Array.from(players.values())
+        .sort((a, b) => b.level - a.level || b.exp - a.exp);
+    
+    let topList = `📜 **BẢNG XẾP HẠNG TU TIÊN GIỚI** 📜\n`;
+    for (let i = 0; i < Math.min(sortedPlayers.length, 5); i++) {
+        topList += `${i + 1}. **${sortedPlayers[i].name}** - ${sortedPlayers[i].realm} (Cấp ${sortedPlayers[i].level})\n`;
+    }
+    return message.reply(topList);
+}
 
     // LỆNH 2: TU LUYỆN (!tuluyen)
     if (command === 'tuluyen' || command === 'train') {
