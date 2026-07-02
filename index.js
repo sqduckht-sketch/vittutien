@@ -57,7 +57,7 @@ client.on('messageCreate', async (message) => {
             break;
 
         case 'tuluyen':
-            if (Date.now() - p.lastTrain < 2000) return message.reply('⚠️ Đang tĩnh tâm, chờ chút!');
+            if (Date.now() - p.lastTrain < 5000) return message.reply('⚠️ Đang tĩnh tâm, chờ chút!');
             let gain = Math.floor((Math.random() * 16 + 15) * p.multiplier);
             p.exp += gain; p.lastTrain = Date.now();
             message.reply(`🧘‍♂️ Tu luyện thành công, nhận ${gain} EXP. Hiện tại: ${p.realm}`);
