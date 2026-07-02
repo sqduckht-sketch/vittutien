@@ -1,59 +1,29 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
-});
-
-const players = new Map();
-const realms = ["Luyện Khí", "Trúc Cơ", "Kết Đan", "Nguyên Anh", "Hóa Thần", "Luyện Hư", "Hợp Thể", "Độ Kiếp", "Đại Thừa"];
-const ADMIN_ID = '1126092277220122634';
-
-class Player {
-    constructor(id, name) {
-        const rand = Math.random();
-        this.id = id; this.name = name; this.level = 1; this.exp = 0;
-        this.linhThach = 10; this.lastTrain = 0; this.daThachAnh = 0;
-        
-        if (rand < 0.02) { this.tuChat = "🔥 Tuyệt Thế Thiên Kiêu"; this.multiplier = 3.0; }
-        else if (rand < 0.10) { this.tuChat = "⚡ Thiên Tài"; this.multiplier = 2.0; }
-        else if (rand < 0.25) { this.tuChat = "💎 Ưu Tú"; this.multiplier = 1.5; }
-        else if (rand < 0.55) { this.tuChat = "🌿 Phàm Nhân Căn Cốt"; this.multiplier = 1.2; }
-        else { this.tuChat = "🤡 Ngu Si Đần Độn"; this.multiplier = 0.5; }
-        this.updateRealm();
-    }
-
-    updateRealm() {
-        let rIdx = Math.floor((this.level - 1) / 10);
-        let sLvl = ((this.level - 1) % 10) + 1;
-        this.realm = rIdx >= realms.length ? "Tiên Nhân" : `${realms[rIdx]} Tầng ${sLvl}`;
-    }
-}
-
-client.on('ready', () => console.log('Bot Vịt Tu Tiên Đã Đột Phá!'));
-
-client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.content.startsWith('!')) return;
-    const args = message.content.slice(1).trim().split(/ +/);
-    const command = args.shift().toLowerCase();
-    const userId = message.author.id;
-
-    if (command === 'dangky') {
-        if (players.has(userId)) return message.reply('❌ Đạo hữu đã có tên trong tiên giới!');
-        let p = new Player(userId, message.author.username);
-        players.set(userId, p);
-        return message.reply(`🎉 Chào mừng **${p.name}**! Tư chất: **${p.tuChat}**`);
-    }
-
-    if (!players.has(userId)) return message.reply('⚠️ Hãy gõ `!dangky` trước nhé!');
-    let p = players.get(userId);
-
     switch (command) {
         case 'help':
-            message.reply(`📜 **Danh sách lệnh:**\n!dangky, !status, !tuluyen, !dotpha, !dao, !mo, !pk @user\n*(Lệnh Admin: !reset, !adminbuff, !setchat)*`);
+            const helpEmbed = new EmbedBuilder()
+                .setColor(0x0099FF)
+                .setTitle('📜 TÀNG KINH CÁC - VỊT TU TIÊN')
+                .addFields(
+                    { name: '⚔️ Lệnh cơ bản', value: '`!dangky`, `!tui`, `!tuluyen`, `!dotpha`, `!dao`, `!mo`, `!pk @user`, `!quay [số]`' },
+                    { name: '🏆 Thông tin', value: '`!top` - Xem bảng xếp hạng' },
+                    { name: '👑 Lệnh Admin', value: '`!setchat @user [1-5]`, `!adminbuff`, `!reset`' }
+                );
+            message.reply({ embeds: [helpEmbed] });
             break;
 
-        case 'status': case 'tui':
+        case 'tui':
+        case 'status':
             let expNext = p.level * 100;
             message.reply(`🎒 **${p.name}**\n🔮 ${p.realm}\n✨ Tu vi: ${p.exp}/${expNext}\n🧬 ${p.tuChat}\n💰 ${p.linhThach} LT | 💎 ${p.daThachAnh} Đá`);
+            break;
+
+        case 'top':
+            const topPlayers = [...players.values()].sort((a, b) => b.level - a.level).slice(0, 5);
+            const topEmbed = new EmbedBuilder().setTitle('🏆 BẢNG XẾP HẠNG TIÊN GIỚI').setColor(0xFFD700);
+            topPlayers.forEach((player, i) => {
+                topEmbed.addFields({ name: `#${i + 1} ${player.name}`, value: `Cấp: ${player.level} - ${player.realm}` });
+            });
+            message.reply({ embeds: [topEmbed] });
             break;
 
         case 'tuluyen':
@@ -74,6 +44,7 @@ client.on('messageCreate', async (message) => {
                 message.reply(`💥 Đột phá thất bại! Kinh mạch tổn thương, mất một ít EXP.`);
             }
             break;
+
         case 'setchat':
             if (message.author.id !== ADMIN_ID) return message.reply('❌ Chỉ Admin mới được dùng!');
             let targetSet = message.mentions.users.first();
@@ -100,14 +71,10 @@ client.on('messageCreate', async (message) => {
         case 'adminbuff':
             if (message.author.id !== ADMIN_ID) return;
             let targetBuff = message.mentions.users.first() || message.author;
-            args[0] === 'exp' ? players.get(targetBuff.id).exp += parseInt(args[1]) : players.get(targetBuff.id).linhThach += parseInt(args[1]);
-            message.reply(`👑 Đã buff cho ${targetBuff.username}.`);
+            let amount = parseInt(args[2]);
+            if (isNaN(amount)) return message.reply('⚠️ Cú pháp: `!adminbuff exp/lt @tên 100`');
+            if (args[0] === 'exp') players.get(targetBuff.id).exp += amount;
+            else players.get(targetBuff.id).linhThach += amount;
+            message.reply(`👑 Đã buff ${amount} cho ${targetBuff.username}.`);
             break;
     }
-});
-
-const express = require('express');
-const app = express();
-app.get('/', (req, res) => res.send('Vịt Tu Tiên đang bay...'));
-app.listen(process.env.PORT || 3000);
-client.login(process.env.DISCORD_TOKEN);
