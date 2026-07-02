@@ -113,4 +113,7 @@ const express = require('express');
 const app = express();
 app.get('/', (req, res) => res.send('Vịt Tu Tiên is running!'));
 app.listen(process.env.PORT || 3000);
+client.once('ready', () => {
+    console.log(`✅ Bot đã xuất thế với tên: ${client.user.tag}!`);
+});
 client.login(process.env.DISCORD_TOKEN);
