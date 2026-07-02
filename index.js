@@ -67,7 +67,7 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'tuluyen' || command === 'train') {
-        if (Date.now() - p.lastTrain < 15000) return message.reply(`⚠️ Đang nghẽn kinh mạch, chờ ${Math.ceil((15000 - (Date.now() - p.lastTrain))/1000)}s!`);
+        if (Date.now() - p.lastTrain < 1000) return message.reply(`⚠️ Đang nghẽn kinh mạch, chờ ${Math.ceil((15000 - (Date.now() - p.lastTrain))/1000)}s!`);
         let expGained = Math.floor((Math.random() * 16 + 15) * p.multiplier);
         p.exp += expGained; p.lastTrain = Date.now();
         if (p.exp >= p.expNeeded) { p.exp -= p.expNeeded; p.level += 1; p.expNeeded = Math.floor(p.expNeeded * 1.2); updateRealm(p); }
