@@ -1,80 +1,95 @@
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const client = new Client({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+});
+
+const players = new Map();
+const realms = ["Luyện Khí", "Trúc Cơ", "Kết Đan", "Nguyên Anh", "Hóa Thần", "Luyện Hư", "Hợp Thể", "Độ Kiếp", "Đại Thừa"];
+const ADMIN_ID = '1126092277220122634';
+
+class Player {
+    constructor(id, name) {
+        const rand = Math.random();
+        this.id = id; this.name = name; this.level = 1; this.exp = 0;
+        this.linhThach = 10; this.lastTrain = 0; this.daThachAnh = 0;
+        if (rand < 0.02) { this.tuChat = "🔥 Tuyệt Thế Thiên Kiêu"; this.multiplier = 3.0; }
+        else if (rand < 0.10) { this.tuChat = "⚡ Thiên Tài"; this.multiplier = 2.0; }
+        else if (rand < 0.25) { this.tuChat = "💎 Ưu Tú"; this.multiplier = 1.5; }
+        else if (rand < 0.55) { this.tuChat = "🌿 Phàm Nhân Căn Cốt"; this.multiplier = 1.2; }
+        else { this.tuChat = "🤡 Ngu Si Đần Độn"; this.multiplier = 0.5; }
+        this.updateRealm();
+    }
+    updateRealm() {
+        let rIdx = Math.floor((this.level - 1) / 10);
+        this.realm = rIdx >= realms.length ? "Tiên Nhân" : `${realms[rIdx]} Tầng ${((this.level - 1) % 10) + 1}`;
+    }
+}
+
+client.on('messageCreate', async (message) => {
+    if (message.author.bot || !message.content.startsWith('!')) return;
+    const args = message.content.slice(1).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
+    const userId = message.author.id;
+
+    if (command === 'dangky') {
+        if (players.has(userId)) return message.reply('❌ Đạo hữu đã nhập môn rồi!');
+        players.set(userId, new Player(userId, message.author.username));
+        return message.reply(`🎉 Chào mừng **${message.author.username}** nhập môn!`);
+    }
+
+    if (!players.has(userId)) return message.reply('⚠️ Hãy gõ `!dangky` trước nhé!');
+    let p = players.get(userId);
+
+    // KHỐI SWITCH CỦA ĐẠO HỮU ĐẶT Ở ĐÂY:
     switch (command) {
         case 'help':
-            const helpEmbed = new EmbedBuilder()
-                .setColor(0x0099FF)
-                .setTitle('📜 TÀNG KINH CÁC - VỊT TU TIÊN')
+            const helpEmbed = new EmbedBuilder().setColor(0x0099FF).setTitle('📜 TÀNG KINH CÁC - VỊT TU TIÊN')
                 .addFields(
-                    { name: '⚔️ Lệnh cơ bản', value: '`!dangky`, `!tui`, `!tuluyen`, `!dotpha`, `!dao`, `!mo`, `!pk @user`, `!quay [số]`' },
+                    { name: '⚔️ Lệnh cơ bản', value: '`!dangky`, `!tui`, `!tuluyen`, `!dotpha`, `!dao`, `!mo`, `!pk @user`' },
                     { name: '🏆 Thông tin', value: '`!top` - Xem bảng xếp hạng' },
                     { name: '👑 Lệnh Admin', value: '`!setchat @user [1-5]`, `!adminbuff`, `!reset`' }
                 );
             message.reply({ embeds: [helpEmbed] });
             break;
-
         case 'tui':
         case 'status':
-            let expNext = p.level * 100;
-            message.reply(`🎒 **${p.name}**\n🔮 ${p.realm}\n✨ Tu vi: ${p.exp}/${expNext}\n🧬 ${p.tuChat}\n💰 ${p.linhThach} LT | 💎 ${p.daThachAnh} Đá`);
+            message.reply(`🎒 **${p.name}**\n🔮 ${p.realm}\n✨ Tu vi: ${p.exp}/${p.level * 100}\n🧬 ${p.tuChat}\n💰 ${p.linhThach} LT | 💎 ${p.daThachAnh} Đá`);
             break;
-
         case 'top':
             const topPlayers = [...players.values()].sort((a, b) => b.level - a.level).slice(0, 5);
             const topEmbed = new EmbedBuilder().setTitle('🏆 BẢNG XẾP HẠNG TIÊN GIỚI').setColor(0xFFD700);
-            topPlayers.forEach((player, i) => {
-                topEmbed.addFields({ name: `#${i + 1} ${player.name}`, value: `Cấp: ${player.level} - ${player.realm}` });
-            });
+            topPlayers.forEach((player, i) => topEmbed.addFields({ name: `#${i + 1} ${player.name}`, value: `Cấp: ${player.level} - ${player.realm}` }));
             message.reply({ embeds: [topEmbed] });
             break;
-
         case 'tuluyen':
-            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm, chờ chút!');
+            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm, chờ 10s!');
             let gain = Math.floor((Math.random() * 16 + 15) * p.multiplier);
             p.exp += gain; p.lastTrain = Date.now();
-            message.reply(`🧘‍♂️ Tu luyện thành công, nhận ${gain} EXP. Hiện tại: ${p.realm}`);
+            message.reply(`🧘‍♂️ Tu luyện nhận ${gain} EXP.`);
             break;
-
         case 'dotpha':
             let cost = p.level * 100;
-            if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP mới có thể đột phá!`);
-            if (Math.random() < 0.7) {
-                p.exp -= cost; p.level += 1; p.updateRealm();
-                message.reply(`🎉 Chúc mừng! Đột phá thành công lên **${p.realm}**!`);
-            } else {
-                p.exp = Math.floor(p.exp * 0.8);
-                message.reply(`💥 Đột phá thất bại! Kinh mạch tổn thương, mất một ít EXP.`);
-            }
+            if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`);
+            if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.updateRealm(); message.reply(`🎉 Lên **${p.realm}**!`); }
+            else { p.exp = Math.floor(p.exp * 0.8); message.reply(`💥 Đột phá thất bại!`); }
             break;
-
         case 'setchat':
-            if (message.author.id !== ADMIN_ID) return message.reply('❌ Chỉ Admin mới được dùng!');
+            if (userId !== ADMIN_ID) return;
             let targetSet = message.mentions.users.first();
-            if (!targetSet || !players.has(targetSet.id)) return message.reply('❌ Hãy tag người chơi cần thay đổi!');
-            let type = parseInt(args[1]);
             let pSet = players.get(targetSet.id);
-            switch(type) {
-                case 1: pSet.tuChat = "🔥 Tuyệt Thế Thiên Kiêu"; pSet.multiplier = 3.0; break;
-                case 2: pSet.tuChat = "⚡ Thiên Tài"; pSet.multiplier = 2.0; break;
-                case 3: pSet.tuChat = "💎 Ưu Tú"; pSet.multiplier = 1.5; break;
-                case 4: pSet.tuChat = "🌿 Phàm Nhân Căn Cốt"; pSet.multiplier = 1.2; break;
-                case 5: pSet.tuChat = "🤡 Ngu Si Đần Độn"; pSet.multiplier = 0.5; break;
-                default: return message.reply('❌ Chọn từ 1 đến 5 thôi nhé!');
-            }
-            message.reply(`👑 Đã chỉnh tư chất của **${targetSet.username}** thành **${pSet.tuChat}**`);
+            let type = parseInt(args[1]);
+            const config = { 1: ["🔥 Tuyệt Thế Thiên Kiêu", 3.0], 2: ["⚡ Thiên Tài", 2.0], 3: ["💎 Ưu Tú", 1.5], 4: ["🌿 Phàm Nhân Căn Cốt", 1.2], 5: ["🤡 Ngu Si Đần Độn", 0.5] };
+            if(config[type]) { pSet.tuChat = config[type][0]; pSet.multiplier = config[type][1]; message.reply(`👑 Đã chỉnh tư chất.`); }
             break;
-
-        case 'reset':
-            if (message.author.id !== ADMIN_ID) return;
-            let t = message.mentions.users.first();
-            if (t && players.has(t.id)) { players.delete(t.id); message.reply(`🗑️ Đã xóa: ${t.username}`); }
-            break;
-
         case 'adminbuff':
-            if (message.author.id !== ADMIN_ID) return;
-            let targetBuff = message.mentions.users.first() || message.author;
+            if (userId !== ADMIN_ID) return;
+            let targetBuff = message.mentions.users.first();
             let amount = parseInt(args[2]);
-            if (isNaN(amount)) return message.reply('⚠️ Cú pháp: `!adminbuff exp/lt @tên 100`');
             if (args[0] === 'exp') players.get(targetBuff.id).exp += amount;
             else players.get(targetBuff.id).linhThach += amount;
-            message.reply(`👑 Đã buff ${amount} cho ${targetBuff.username}.`);
+            message.reply(`👑 Đã buff.`);
             break;
     }
+});
+
+client.login(process.env.DISCORD_TOKEN);
