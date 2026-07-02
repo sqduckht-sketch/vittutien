@@ -13,7 +13,6 @@ function createPlayer(id, name) {
     else if (rand < 0.25) { tuChat = "💎 Ưu Tú"; multiplier = 1.5; }
     else if (rand < 0.55) { tuChat = "🌿 Phàm Nhân Căn Cốt"; multiplier = 1.2; }
     else { tuChat = "🤡 Ngu Si Đần Độn"; multiplier = 0.5; }
-
     return { id, name, level: 1, exp: 0, expNeeded: 100, realm: "Luyện Khí Tầng 1", linhThach: 10, lastTrain: 0, lastDao: 0, lastMo: 0, daThachAnh: 0, tuChat, multiplier, atk: 10, def: 5 };
 }
 
@@ -45,7 +44,12 @@ client.on('messageCreate', async (message) => {
     let p = players.get(userId);
 
     if (command === 'help') {
-        return message.reply('📜 Lệnh: `!dangky`, `!tui`, `!top`, `!tuluyen`, `!dao`, `!mo`, `!dotpha`, `!pk`, `!adminbuff`');
+        const embed = new EmbedBuilder().setColor(0x0099FF).setTitle('📜 TÀNG KINH CÁC - VỊT TU TIÊN')
+            .addFields(
+                { name: '🧬 Tư chất:', value: '🔥 Thiên Kiêu (x3), ⚡ Thiên Tài (x2), 💎 Ưu Tú (x1.5), 🌿 Phàm Nhân (x1.2), 🤡 Ngu Si (x0.5)' },
+                { name: '⚔️ Lệnh:', value: '`!tui`, `!top`, `!tuluyen`, `!dao`, `!mo`, `!dotpha`, `!pk`, `!quay`' }
+            );
+        return message.reply({ embeds: [embed] });
     }
 
     if (command === 'tui') { updateStats(p); updateRealm(p); return message.reply(`🎒 **${p.name}**\n🔮 ${p.realm}\n⚔️ ATK: ${p.atk} | 🛡️ DEF: ${p.def}\n✨ EXP: ${p.exp}/${p.expNeeded}\n💰 Linh thạch: ${p.linhThach}\n💎 Đá: ${p.daThachAnh || 0}`); }
@@ -65,20 +69,37 @@ client.on('messageCreate', async (message) => {
     }
 
     if (command === 'dao') {
-        if (Date.now() - p.lastDao < 15000) return message.reply('⚠️ Cần nghỉ 30s sau khi đào!');
+        if (Date.now() - p.lastDao < 30000) return message.reply('⚠️ Cần nghỉ 30s sau khi đào!');
         p.lastDao = Date.now();
         if (Math.random() < 0.3) { p.daThachAnh = (p.daThachAnh || 0) + 1; message.reply('💎 Đào được Đá Thạch Anh!'); }
         else { let g = Math.floor(Math.random() * 30) + 10; p.linhThach += g; message.reply(`⛏️ Được ${g} Linh thạch.`); }
     }
 
     if (command === 'mo') {
-        if (Date.now() - p.lastMo < 5000) return message.reply('⚠️ Cần chờ 60s để giải mã đá!');
+        if (Date.now() - p.lastMo < 60000) return message.reply('⚠️ Cần chờ 60s để giải mã đá!');
         if (!p.daThachAnh || p.daThachAnh <= 0) return message.reply('❌ Không có Đá Thạch Anh!');
         p.lastMo = Date.now(); p.daThachAnh -= 1;
         let r = Math.random();
         if (r < 0.7) { p.linhThach += 50; message.reply('🎁 Được 50 Linh thạch!'); }
         else if (r < 0.95) { p.exp += 50; message.reply('✨ Được 50 EXP!'); }
         else { p.linhThach += 500; message.reply('👑 ĐẠI VẬN MAY! 500 Linh thạch!'); }
+    }
+
+    if (command === 'quay') {
+        let amount = parseInt(args[0]);
+        if (isNaN(amount) || amount <= 0) return message.reply('⚠️ `!quay [số_linh_thạch]`');
+        if (amount > p.linhThach) return message.reply('❌ Không đủ tiền!');
+        if (amount > 1000) return message.reply('⚠️ Tối đa 1000 Linh thạch!');
+        p.linhThach -= amount;
+        if (Math.random() < 0.45) {
+            let win = amount * 2;
+            p.linhThach += win;
+            if (win >= 1000) message.channel.send(`🎉 **ĐẠI HỶ!** ${message.author.username} vừa quay trúng **${win}** Linh thạch!`);
+            else message.reply(`🎰 Chúc mừng! Thắng được ${win} Linh thạch.`);
+        } else {
+            if (amount >= 500) message.channel.send(`🤡 **Đại bại!** ${message.author.username} vừa nướng ${amount} Linh thạch vào nhà cái!`);
+            else message.reply(`💥 Tiếc quá! Mất trắng ${amount} Linh thạch.`);
+        }
     }
 
     if (command === 'dotpha') {
@@ -104,14 +125,17 @@ client.on('messageCreate', async (message) => {
         else message.reply('🛡️ Đối thủ thủ quá cứng!');
     }
 
-    if (command === 'adminbuff') {
-        if (message.author.id !== '1126092277220122634') return message.reply('❌ Chỉ chủ nhân!');
-        let type = args[0], amount = parseInt(args[1]);
+    if (command === 'setchat' && message.author.id === '1126092277220122634') {
         let target = message.mentions.users.first() || message.author;
         let tp = players.get(target.id);
-        if (type === 'exp') tp.exp += amount; else if (type === 'thach') tp.linhThach += amount;
-        message.reply(`👑 Đã buff!`);
+        tp.multiplier = parseFloat(args[0]);
+        updateStats(tp);
+        message.reply(`👑 Đã chỉnh tư chất của ${target.username} thành x${tp.multiplier}`);
     }
 });
 
+const express = require('express');
+const app = express();
+app.get('/', (req, res) => res.send('Vịt Tu Tiên đang bay!'));
+app.listen(process.env.PORT || 3000);
 client.login(process.env.DISCORD_TOKEN);
