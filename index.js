@@ -74,7 +74,7 @@ client.on('messageCreate', async (message) => {
             break;
 
         case 'tuluyen': case 'tu':
-            if (Date.now() - p.lastTrain < 2000) return message.reply(`⚠️ Chờ ${Math.ceil((15000 - (Date.now() - p.lastTrain))/1000)}s!`);
+            if (Date.now() - p.lastTrain < 2000) return message.reply(`⚠️ Chờ ${Math.ceil((2000 - (Date.now() - p.lastTrain))/1000)}s!`);
             let gain = Math.floor(Math.random() * 16 + 15);
             p.addExp(gain); p.lastTrain = Date.now();
             message.reply(`🧘‍♂️ Nhận ${Math.floor(gain * p.multiplier)} EXP. Cảnh giới: ${p.realm}`);
