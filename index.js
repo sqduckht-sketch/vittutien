@@ -40,12 +40,17 @@ class Player {
     }
 }
 
-setInterval(() => {
+// Hàm tạo bí cảnh
+function createBicanh() {
     const diffs = ["Thấp", "Trung bình", "Cao", "Địa ngục"];
     const rewards = [100, 300, 1000, 5000];
     const idx = Math.floor(Math.random() * diffs.length);
     currentBicanh = { diff: diffs[idx], reward: rewards[idx], requiredAtk: (idx + 1) * 50 };
-}, 600000);
+}
+
+// Khởi chạy bí cảnh đầu tiên và đặt lịch 3 phút
+createBicanh();
+setInterval(createBicanh, 180000);
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.startsWith('!')) return;
@@ -96,7 +101,7 @@ client.on('messageCreate', async (message) => {
             let cost = p.level * 100;
             if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`);
             if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.updateRealm(); p.updateStats(); message.reply(`🎉 Chúc mừng! Lên **${p.realm}**!`); }
-            else { p.exp = Math.floor(p.exp * 0.8); message.reply(`💥 Đột phá thất bại!`); }
+            else { p.exp = Math.floor(p.exp * 0.8); message.reply(`💥 Đột phá thất bại! EXP còn lại: ${p.exp}`); }
             break;
 
         case 'thamgia':
@@ -112,16 +117,26 @@ client.on('messageCreate', async (message) => {
             }
             p.linhThach += currentBicanh.reward;
             message.reply(msg);
-            currentBicanh = null;
+            currentBicanh = null; // Xóa bí cảnh sau khi tham gia
             break;
 
         case 'setchat':
             if (userId !== ADMIN_ID) return;
             let target = message.mentions.users.first();
+            if (!target || !players.has(target.id)) return;
             let pSet = players.get(target.id);
             let type = parseInt(args[1]);
             const config = { 1: ["👑 Tiên Đế", 10.0], 2: ["🌟 Thánh Nhân", 5.0], 3: ["🔥 Tuyệt Thế Thiên Kiêu", 3.0], 4: ["⚡ Thiên Tài", 2.0], 5: ["💎 Ưu Tú", 1.5], 6: ["🌿 Phàm Nhân Căn Cốt", 1.2], 7: ["🤡 Ngu Si Đần Độn", 0.5] };
             if(config[type]) { pSet.tuChat = config[type][0]; pSet.multiplier = config[type][1]; pSet.updateStats(); message.reply('👑 Đã đổi.'); }
+            break;
+
+        case 'adminbuff':
+            if (userId !== ADMIN_ID) return;
+            let tBuff = message.mentions.users.first();
+            if (!tBuff || !players.has(tBuff.id)) return message.reply("Người chơi không tồn tại.");
+            let pBuff = players.get(tBuff.id);
+            pBuff.level += 10; pBuff.updateRealm(); pBuff.updateStats();
+            message.reply(`👑 Đã buff 10 cấp cho ${tBuff.username}`);
             break;
 
         case 'reset':
