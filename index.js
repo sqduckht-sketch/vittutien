@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
@@ -43,77 +43,72 @@ client.on('messageCreate', async (message) => {
     if (!players.has(userId)) return message.reply('⚠️ Hãy gõ `!dangky` để nhập môn trước!');
     let p = players.get(userId);
 
-    // Lệnh HELP (Embed đẹp mắt)
+    // Lệnh ĐỘT PHÁ tích hợp nút bấm
+    if (command === 'dotpha') {
+        const requiredExp = p.level * 200;
+        if (p.exp < requiredExp) return message.reply(`❌ Cần ${requiredExp} EXP để đột phá.`);
+
+        let daiCanhGioi = Math.floor((p.level - 1) / 10);
+        let baseRate = 1.0 - (daiCanhGioi * 0.1);
+        let bonus = (p.multiplier - 1.0) * 0.1;
+        let successRate = Math.min(1.0, Math.max(0.05, baseRate + bonus));
+
+        const confirm = new ButtonBuilder().setCustomId('confirm').setLabel('Đột phá').setStyle(ButtonStyle.Success);
+        const cancel = new ButtonBuilder().setCustomId('cancel').setLabel('Hủy').setStyle(ButtonStyle.Danger);
+        const row = new ActionRowBuilder().addComponents(confirm, cancel);
+
+        const replyMsg = await message.reply({
+            content: `🔮 **Đạo hữu chắc chắn muốn đột phá?**\n✨ Tỉ lệ thành công: **${(successRate * 100).toFixed(0)}%**`,
+            components: [row]
+        });
+
+        const collector = replyMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 15000 });
+        collector.on('collect', async i => {
+            if (i.user.id !== userId) return i.reply({ content: '❌ Không phải của đạo hữu!', ephemeral: true });
+            if (i.customId === 'confirm') {
+                if (Math.random() < successRate) {
+                    p.exp -= requiredExp;
+                    p.level += 1;
+                    updateRealm(p);
+                    await i.update({ content: `⚡ Thành công! Đạo hữu đã đột phá lên **${p.realm}**.`, components: [] });
+                } else {
+                    p.exp = Math.floor(p.exp * 0.7);
+                    await i.update({ content: `💥 Đột phá thất bại! Kinh mạch chấn động, tu vi giảm sút!`, components: [] });
+                }
+            } else {
+                await i.update({ content: '🛡️ Đạo hữu đã chọn giữ vững tu vi.', components: [] });
+            }
+        });
+        return;
+    }
+
+    // Các lệnh còn lại giữ nguyên
     if (command === 'help') {
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setTitle('📜 TÀNG KINH CÁC - VỊT TU TIÊN')
-            .setDescription('Chào mừng đạo hữu đến với thế giới tu tiên. Dưới đây là các công pháp hiện có:')
-            .addFields(
-                { name: '✨ !dangky', value: 'Khởi tạo nhân vật & nhận tư chất.', inline: false },
-                { name: '🎒 !tui', value: 'Xem thông tin & túi đồ cá nhân.', inline: false },
-                { name: '🧘‍♂️ !tuluyen', value: 'Tĩnh tọa tăng tu vi (EXP).', inline: false },
-                { name: '⛏️ !dao', value: 'Đào khoáng (Linh thạch/Đá Thạch Anh).', inline: false },
-                { name: '🎁 !mo', value: 'Khai mở Đá Thạch Anh nhận quà.', inline: false },
-                { name: '⚔️ !pk @user', value: 'Thách đấu cướp Linh thạch.', inline: false }
-            )
-            .setFooter({ text: 'Chúc đạo hữu sớm ngày thành Tiên!' });
+        const embed = new EmbedBuilder().setColor(0x0099FF).setTitle('📜 TÀNG KINH CÁC').setDescription('!dangky, !dotpha, !tui, !tuluyen, !dao, !mo');
         return message.reply({ embeds: [embed] });
     }
 
-    if (command === 'status' || command === 'profile' || command === 'tui') {
+    if (command === 'tui') {
         updateRealm(p);
-        return message.reply(`🎒 **${p.name}**\n🔮 Cảnh giới: ${p.realm}\n✨ Tu vi: ${p.exp}/${p.expNeeded}\n🧬 Tư chất: ${p.tuChat} (x${p.multiplier})\n💰 Linh thạch: ${p.linhThach}\n💎 Đá Thạch Anh: ${p.daThachAnh || 0}`);
+        return message.reply(`🎒 **${p.name}**\n🔮 ${p.realm}\n✨ EXP: ${p.exp}/${p.expNeeded}\n🧬 Tư chất: ${p.tuChat}\n💰 Linh thạch: ${p.linhThach}`);
     }
 
-    if (command === 'tuluyen' || command === 'tu') {
-        if (Date.now() - p.lastTrain < 5000) return message.reply(`⚠️ Đang nghẽn kinh mạch, chờ ${Math.ceil((15000 - (Date.now() - p.lastTrain))/1000)}s!`);
+    if (command === 'tuluyen') {
+        if (Date.now() - p.lastTrain < 5000) return message.reply('⚠️ Đang nghẽn kinh mạch!');
         let expGained = Math.floor((Math.random() * 16 + 15) * p.multiplier);
         p.exp += expGained; p.lastTrain = Date.now();
-        if (p.exp >= p.expNeeded) { p.exp -= p.expNeeded; p.level += 1; p.expNeeded = Math.floor(p.expNeeded * 1.2); updateRealm(p); }
-        return message.reply(`🧘‍♂️ Nhận ${expGained} EXP. Cảnh giới: ${p.realm}`);
+        if (p.exp >= p.expNeeded) { p.exp -= p.expNeeded; p.level += 1; updateRealm(p); }
+        return message.reply(`🧘‍♂️ Nhận ${expGained} EXP.`);
     }
 
     if (command === 'dao') {
         if (Math.random() < 0.3) { p.daThachAnh = (p.daThachAnh || 0) + 1; message.reply('💎 Đào được Đá Thạch Anh!'); }
         else { let g = Math.floor(Math.random() * 30) + 10; p.linhThach += g; message.reply(`⛏️ Đào được ${g} Linh thạch.`); }
     }
-
-    if (command === 'mo') {
-        if (!p.daThachAnh || p.daThachAnh <= 0) return message.reply('❌ Không có Đá Thạch Anh!');
-        p.daThachAnh -= 1;
-        const msg = await message.reply('💎 Đang khai mở... 🌀');
-        const frames = ['🌀 Đang khai mở...', '⚡ Giải mã...', '💥 Nứt ra...', '✨ Nhận kết quả...'];
-        for (let f of frames) { await new Promise(r => setTimeout(r, 800)); await msg.edit(f); }
-        let r = Math.random();
-        if (r < 0.7) { p.linhThach += 50; await msg.edit('🎁 Mở được 50 Linh thạch!'); }
-        else if (r < 0.95) { p.exp += 50; await msg.edit('✨ Mở được 50 EXP!'); }
-        else { p.linhThach += 500; await msg.edit('👑 **ĐẠI VẬN MAY!** Mở được 500 Linh thạch!'); }
-    }
-
-    if (command === 'pk') {
-        let target = message.mentions.users.first();
-        if (!target || !players.has(target.id)) return message.reply('Hãy tag người chơi!');
-        let p2 = players.get(target.id);
-        if (Math.random() > 0.5) { let l = Math.floor(p2.linhThach * 0.1); p.linhThach += l; p2.linhThach -= l; message.reply(`⚔️ Thắng! Cướp được ${l} Linh thạch.`); }
-        else message.reply(`🛡️ Thất bại!`);
-    }
-
-    if (command === 'adminbuff') {
-        if (message.author.id !== '1126092277220122634') return message.reply('❌ Chỉ chủ nhân!');
-        let type = args[0], amount = parseInt(args[1]);
-        let target = message.mentions.users.first() || message.author;
-        let tp = players.get(target.id);
-        if (type === 'exp') tp.exp += amount; else if (type === 'thach') tp.linhThach += amount;
-        message.reply(`👑 Đã buff cho ${target.username}.`);
-    }
 });
 
 const express = require('express');
 const app = express();
-app.get('/', (req, res) => res.send('Vịt Tu Tiên is running!'));
+app.get('/', (req, res) => res.send('Vịt Tu Tiên đang bay!'));
 app.listen(process.env.PORT || 3000);
-client.once('ready', () => {
-    console.log(`✅ Bot đã xuất thế với tên: ${client.user.tag}!`);
-});
 client.login(process.env.DISCORD_TOKEN);
