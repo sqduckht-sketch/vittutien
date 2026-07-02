@@ -66,8 +66,8 @@ client.on('messageCreate', async (message) => {
         return message.reply(`🎒 **${p.name}**\n🔮 Cảnh giới: ${p.realm}\n✨ Tu vi: ${p.exp}/${p.expNeeded}\n🧬 Tư chất: ${p.tuChat} (x${p.multiplier})\n💰 Linh thạch: ${p.linhThach}\n💎 Đá Thạch Anh: ${p.daThachAnh || 0}`);
     }
 
-    if (command === 'tuluyen' || command === 'train') {
-        if (Date.now() - p.lastTrain < 1000) return message.reply(`⚠️ Đang nghẽn kinh mạch, chờ ${Math.ceil((15000 - (Date.now() - p.lastTrain))/1000)}s!`);
+    if (command === 'tuluyen' || command === 'tu') {
+        if (Date.now() - p.lastTrain < 5000) return message.reply(`⚠️ Đang nghẽn kinh mạch, chờ ${Math.ceil((15000 - (Date.now() - p.lastTrain))/1000)}s!`);
         let expGained = Math.floor((Math.random() * 16 + 15) * p.multiplier);
         p.exp += expGained; p.lastTrain = Date.now();
         if (p.exp >= p.expNeeded) { p.exp -= p.expNeeded; p.level += 1; p.expNeeded = Math.floor(p.expNeeded * 1.2); updateRealm(p); }
