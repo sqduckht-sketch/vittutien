@@ -48,7 +48,7 @@ client.on('messageCreate', async (message) => {
 
     switch (command) {
         case 'help':
-            message.reply(`📜 **Danh sách lệnh:**\n!dangky, !status, !tuluyen, !dotpha (Cần thiết để lên cấp), !dao, !mo, !pk @user\n*(Lệnh Admin: !reset, !adminbuff)*`);
+            message.reply(`📜 **Danh sách lệnh:**\n!dangky, !status, !tuluyen, !dotpha, !dao, !mo, !pk @user\n*(Lệnh Admin: !reset, !adminbuff, !setchat)*`);
             break;
 
         case 'status': case 'tui':
@@ -57,16 +57,16 @@ client.on('messageCreate', async (message) => {
             break;
 
         case 'tuluyen':
-            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm, chờ chút!');
+            if (Date.now() - p.lastTrain < 2000) return message.reply('⚠️ Đang tĩnh tâm, chờ chút!');
             let gain = Math.floor((Math.random() * 16 + 15) * p.multiplier);
             p.exp += gain; p.lastTrain = Date.now();
-            message.reply(`🧘‍♂️ Tu luyện thành công, nhận ${gain} EXP.`);
+            message.reply(`🧘‍♂️ Tu luyện thành công, nhận ${gain} EXP. Hiện tại: ${p.realm}`);
             break;
 
         case 'dotpha':
             let cost = p.level * 100;
             if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP mới có thể đột phá!`);
-            if (Math.random() < 0.7) { // 70% thành công
+            if (Math.random() < 0.7) {
                 p.exp -= cost; p.level += 1; p.updateRealm();
                 message.reply(`🎉 Chúc mừng! Đột phá thành công lên **${p.realm}**!`);
             } else {
@@ -76,12 +76,12 @@ client.on('messageCreate', async (message) => {
             break;
 
         case 'dao':
-            if (Math.random() < 0.3) { p.daThachAnh++; message.reply('💎 Đào được Đá Thạch Anh!'); }
+            if (Math.random() < 0.3) { p.daThachAnh = (p.daThachAnh || 0) + 1; message.reply('💎 Đào được Đá Thạch Anh!'); }
             else { let g = Math.floor(Math.random() * 30) + 10; p.linhThach += g; message.reply(`⛏️ Đào được ${g} Linh thạch.`); }
             break;
 
         case 'mo':
-            if (!p.daThachAnh) return message.reply('❌ Không có Đá!');
+            if (!p.daThachAnh || p.daThachAnh <= 0) return message.reply('❌ Không có Đá Thạch Anh!');
             p.daThachAnh--;
             let r = Math.random();
             if (r < 0.7) { p.linhThach += 50; message.reply('🎁 50 Linh thạch!'); }
@@ -97,6 +97,23 @@ client.on('messageCreate', async (message) => {
             else message.reply(`🛡️ Thất bại!`);
             break;
 
+        case 'setchat':
+            if (message.author.id !== ADMIN_ID) return message.reply('❌ Chỉ Admin mới được dùng!');
+            let targetSet = message.mentions.users.first();
+            if (!targetSet || !players.has(targetSet.id)) return message.reply('❌ Hãy tag người chơi cần thay đổi!');
+            let type = parseInt(args[1]);
+            let pSet = players.get(targetSet.id);
+            switch(type) {
+                case 1: pSet.tuChat = "🔥 Tuyệt Thế Thiên Kiêu"; pSet.multiplier = 3.0; break;
+                case 2: pSet.tuChat = "⚡ Thiên Tài"; pSet.multiplier = 2.0; break;
+                case 3: pSet.tuChat = "💎 Ưu Tú"; pSet.multiplier = 1.5; break;
+                case 4: pSet.tuChat = "🌿 Phàm Nhân Căn Cốt"; pSet.multiplier = 1.2; break;
+                case 5: pSet.tuChat = "🤡 Ngu Si Đần Độn"; pSet.multiplier = 0.5; break;
+                default: return message.reply('❌ Chọn từ 1 đến 5 thôi nhé!');
+            }
+            message.reply(`👑 Đã chỉnh tư chất của **${targetSet.username}** thành **${pSet.tuChat}**`);
+            break;
+
         case 'reset':
             if (message.author.id !== ADMIN_ID) return;
             let t = message.mentions.users.first();
@@ -107,7 +124,7 @@ client.on('messageCreate', async (message) => {
             if (message.author.id !== ADMIN_ID) return;
             let targetBuff = message.mentions.users.first() || message.author;
             args[0] === 'exp' ? players.get(targetBuff.id).exp += parseInt(args[1]) : players.get(targetBuff.id).linhThach += parseInt(args[1]);
-            message.reply(`👑 Đã buff.`);
+            message.reply(`👑 Đã buff cho ${targetBuff.username}.`);
             break;
     }
 });
