@@ -9,7 +9,6 @@ pool.query(`CREATE TABLE IF NOT EXISTS players (id VARCHAR(255) PRIMARY KEY, dat
 
 const realms = ["Luyện Khí", "Trúc Cơ", "Kết Đan", "Nguyên Anh", "Hóa Thần", "Luyện Hư", "Hợp Thể", "Độ Kiếp", "Đại Thừa"];
 const ADMIN_ID = '1126092277220122634';
-let currentBicanh = null;
 
 async function getP(id) { const res = await pool.query('SELECT data FROM players WHERE id = $1', [id]); return res.rows.length > 0 ? res.rows[0].data : null; }
 async function saveP(p) { await pool.query('INSERT INTO players (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2', [p.id, JSON.stringify(p)]); }
@@ -53,23 +52,43 @@ client.on('messageCreate', async (message) => {
     if (!pData) return message.reply('⚠️ Gõ `!dangky` trước!');
     let p = new Player(pData.id, pData.name, pData);
 
-    if (cmd === 'tui') { p.sync(); message.reply(`🎒 **${p.name}**\n🧬 ${p.tuChat} (x${p.multiplier})\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK\n💰 ${p.linhThach} LT`); }
-    else if (cmd === 'tuluyen') {
-        if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!');
-        p.exp += Math.floor((Math.random() * 16 + 15) * p.multiplier);
-        p.lastTrain = Date.now();
-        await saveP(p);
-        message.reply(`🧘‍♂️ **Tu luyện:** +EXP. Tiến độ: ${p.exp}/${p.level * 100}`);
+    switch (cmd) {
+        case 'tui': p.sync(); message.reply(`🎒 **${p.name}**\n🧬 ${p.tuChat} (x${p.multiplier})\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK\n💰 ${p.linhThach} LT\n🏠 Động Phủ: ${p.dongPhuLevel}`); break;
+        case 'tuluyen': 
+            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!'); 
+            let gain = Math.floor((Math.random() * 16 + 15) * p.multiplier * (1 + p.dongPhuLevel * 0.2)); 
+            p.exp += gain; p.lastTrain = Date.now(); 
+            await saveP(p);
+            message.reply(`🧘‍♂️ **Tu luyện:** +${gain} EXP\n🔮 ${p.realm}\n📈 Tiến độ: ${p.exp}/${p.level * 100} EXP`); break;
+        case 'dotpha': 
+            let cost = p.level * 100; 
+            if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`); 
+            if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.sync(); await saveP(p); message.reply(`🎉 Chúc mừng! Bạn đã đột phá lên **${p.realm}**!`); }
+            else { p.exp = Math.floor(p.exp * 0.8); await saveP(p); message.reply(`💥 Đột phá thất bại! Mất 20% EXP.`); } break;
+        case 'pk': {
+            let t = message.mentions.users.first();
+            if(!t || t.id === userId) return message.reply('❌ Tag đối thủ!');
+            let p2Data = await getP(t.id);
+            if(!p2Data) return message.reply('❌ Đối thủ chưa nhập môn!');
+            let p2 = new Player(p2Data.id, p2Data.name, p2Data);
+            if(p.linhThach < 50 || p2.linhThach < 50) return message.reply('❌ Cần 50 LT!');
+            if(Math.random()*(p.atk+p2.atk) < p.atk) { p.linhThach += 50; p2.linhThach -= 50; p.wins++; await saveP(p); await saveP(p2); message.reply('⚔️ Bạn thắng 50 LT!'); } 
+            else { p2.linhThach += 50; p.linhThach -= 50; p2.wins++; await saveP(p); await saveP(p2); message.reply('💀 Bạn thua 50 LT!'); }
+            break; }
+        case 'nhan': if (p.lastDaily && Date.now() - p.lastDaily < 86400000) return message.reply('⚠️ Mai nhận tiếp!'); p.linhThach += 500; p.lastDaily = Date.now(); await saveP(p); message.reply('🎁 Nhận 500 LT!'); break;
+        case 'setchat':
+            if (userId !== ADMIN_ID) return;
+            let target = message.mentions.users.first();
+            let tData = await getP(target?.id);
+            if (!target || !tData) return;
+            let tp = new Player(tData.id, tData.name, tData);
+            let type = parseInt(args[1]);
+            const config = { 1: ["👑 Tiên Đế", 10.0], 2: ["🌟 Thánh Nhân", 5.0], 3: ["🔥 Tuyệt Thế Thiên Kiêu", 3.0], 4: ["⚡ Thiên Tài", 2.0], 5: ["💎 Ưu Tú", 1.5], 6: ["🌿 Phàm Nhân Căn Cốt", 1.2], 7: ["🤡 Ngu Si Đần Độn", 0.5] };
+            if(config[type]) { tp.tuChat = config[type][0]; tp.multiplier = config[type][1]; tp.sync(); await saveP(tp); message.reply(`✅ Đã chỉnh tư chất!`); }
+            break;
     }
-    else if (cmd === 'nhan') {
-        if (p.lastDaily && Date.now() - p.lastDaily < 86400000) return message.reply('⚠️ Mai nhận tiếp!');
-        p.linhThach += 500; p.lastDaily = Date.now();
-        await saveP(p);
-        message.reply('🎁 Nhận 500 LT!');
-    }
-    // Bạn có thể dán tiếp các lệnh !dotpha, !pk... vào đây theo cấu trúc trên
 });
 
 client.login(process.env.DISCORD_TOKEN);
 const app = express();
-app.listen(process.env.PORT || 3000, () => console.log('Tiên giới online!'));
+app.listen(process.env.PORT || 3000);
