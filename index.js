@@ -134,4 +134,9 @@ client.on('messageCreate', async (message) => {
     }
 });
 
+const express = require('express');
+const app = express();
+const port = 3000;
+app.get('/', (req, res) => res.send('Bot đang tu tiên!'));
+app.listen(port, () => console.log(`Bot đang chạy trên cổng ${port}`));
 client.login(process.env.DISCORD_TOKEN);
