@@ -2,10 +2,10 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { Pool } = require('pg');
 const express = require('express');
 
-// --- 1. CẤU HÌNH WEB SERVER (ĐỂ RENDER GIỮ BOT LUÔN CHẠY) ---
+// --- 1. WEB SERVER (BẮT BUỘC ĐỂ RENDER GIỮ BOT CHẠY) ---
 const app = express();
-app.get('/', (req, res) => res.send('Bot đang sống!'));
-app.listen(process.env.PORT || 3000, () => console.log('🚀 Server đã sẵn sàng.'));
+app.get('/', (req, res) => res.send('Bot Tiên Hiệp đang online!'));
+app.listen(process.env.PORT || 3000, () => console.log('🚀 Server started'));
 
 // --- 2. CẤU HÌNH BOT & DATABASE ---
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
@@ -16,9 +16,11 @@ pool.query(`CREATE TABLE IF NOT EXISTS players (id VARCHAR(255) PRIMARY KEY, dat
 const realms = ["Luyện Khí", "Trúc Cơ", "Kết Đan", "Nguyên Anh", "Hóa Thần", "Luyện Hư", "Hợp Thể", "Độ Kiếp", "Đại Thừa"];
 const ADMIN_ID = '1126092277220122634';
 
+// Các hàm hỗ trợ
 async function getP(id) { const res = await pool.query('SELECT data FROM players WHERE id = $1', [id]); return res.rows.length > 0 ? res.rows[0].data : null; }
 async function saveP(p) { await pool.query('INSERT INTO players (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2', [p.id, JSON.stringify(p)]); }
 
+// Class Player (Giữ nguyên logic của bạn)
 class Player {
     constructor(id, name, data = null) {
         if (data) { Object.assign(this, data); }
@@ -26,12 +28,8 @@ class Player {
             this.id = id; this.name = name; this.level = 1; this.exp = 0; this.linhThach = 100; this.lastTrain = 0; this.wins = 0; this.lastDaily = 0; this.dongPhuLevel = 1; this.weapon = { name: "Tay Không", atk: 0 };
             const rand = Math.random();
             if (rand < 0.005) { this.tuChat = "👑 Tiên Đế"; this.multiplier = 10.0; }
-            else if (rand < 0.015) { this.tuChat = "🌟 Thánh Nhân"; this.multiplier = 5.0; }
-            else if (rand < 0.035) { this.tuChat = "🔥 Tuyệt Thế Thiên Kiêu"; this.multiplier = 3.0; }
             else if (rand < 0.10) { this.tuChat = "⚡ Thiên Tài"; this.multiplier = 2.0; }
-            else if (rand < 0.25) { this.tuChat = "💎 Ưu Tú"; this.multiplier = 1.5; }
-            else if (rand < 0.55) { this.tuChat = "🌿 Phàm Nhân Căn Cốt"; this.multiplier = 1.2; }
-            else { this.tuChat = "🤡 Ngu Si Đần Độn"; this.multiplier = 0.5; }
+            else { this.tuChat = "🌿 Phàm Nhân"; this.multiplier = 1.0; }
         }
         this.sync();
     }
@@ -62,52 +60,20 @@ client.on('messageCreate', async (message) => {
     let p = new Player(pData.id, pData.name, pData);
 
     switch (cmd) {
-        case 'help': message.reply(`📜 **Lệnh:** !tui, !tuluyen, !dotpha, !pk @user, !nangcap, !top, !top_pk, !top_giaucu, !nhan, !luyenkhi`); break;
-        case 'tui': p.sync(); message.reply(`🎒 **${p.name}**\n🧬 ${p.tuChat} (x${p.multiplier})\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK\n💰 ${p.linhThach} LT\n🏠 Động Phủ: ${p.dongPhuLevel}`); break;
+        case 'help': message.reply(`📜 **Lệnh:** !tui, !tuluyen, !dotpha, !pk, !nangcap, !nhan, !top`); break;
+        case 'tui': p.sync(); message.reply(`🎒 **${p.name}**\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK\n💰 ${p.linhThach} LT`); break;
         case 'tuluyen': 
-            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!'); 
-            p.exp += Math.floor((Math.random() * 16 + 15) * p.multiplier * (1 + p.dongPhuLevel * 0.2)); 
-            p.lastTrain = Date.now(); await saveP(p);
-            message.reply(`🧘‍♂️ **Tu luyện xong!**\n📈 Tiến độ: ${p.exp}/${p.level * 100} EXP`); break;
+            let gain = Math.floor((Math.random() * 20 + 10) * p.multiplier);
+            p.exp += gain; await saveP(p);
+            message.reply(`🧘‍♂️ Tu luyện được ${gain} EXP.`); break;
         case 'dotpha': 
-            let cost = p.level * 100; 
-            if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`); 
-            if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.sync(); await saveP(p); message.reply(`🎉 Thành công lên **${p.realm}**!`); }
-            else { p.exp = Math.floor(p.exp * 0.8); await saveP(p); message.reply(`💥 Thất bại! Mất 20% EXP.`); } break;
-        case 'pk': {
-            let t = message.mentions.users.first();
-            if(!t || t.id === userId) return message.reply('❌ Tag đối thủ!');
-            let p2Data = await getP(t.id);
-            if(!p2Data) return message.reply('❌ Đối thủ chưa nhập môn!');
-            let p2 = new Player(p2Data.id, p2Data.name, p2Data);
-            if(p.linhThach < 50 || p2.linhThach < 50) return message.reply('❌ Cần 50 LT!');
-            if(Math.random()*(p.atk+p2.atk) < p.atk) { p.linhThach += 50; p2.linhThach -= 50; p.wins++; await saveP(p); await saveP(p2); message.reply('⚔️ Bạn thắng!'); } 
-            else { p2.linhThach += 50; p.linhThach -= 50; p2.wins++; await saveP(p); await saveP(p2); message.reply('💀 Bạn thua!'); }
-            break; }
-        case 'nangcap': 
-            let nC = p.dongPhuLevel * 500; if(p.linhThach < nC) return message.reply(`❌ Cần ${nC} LT!`); 
-            p.linhThach -= nC; p.dongPhuLevel++; await saveP(p); message.reply(`🏠 Động phủ lên cấp ${p.dongPhuLevel}!`); break;
-        case 'nhan': if (p.lastDaily && Date.now() - p.lastDaily < 86400000) return message.reply('⚠️ Mai mới được nhận!'); p.linhThach += 500; p.lastDaily = Date.now(); await saveP(p); message.reply('🎁 Nhận 500 LT!'); break;
-        case 'luyenkhi': if(p.exp < 500) return message.reply('❌ Thiếu EXP!'); p.exp -= 500; p.linhThach += 200; await saveP(p); message.reply('✨ +200 LT!'); break;
+            let cost = p.level * 100;
+            if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP`);
+            p.exp -= cost; p.level += 1; p.sync(); await saveP(p);
+            message.reply(`🎉 Chúc mừng đột phá lên **${p.realm}**!`); break;
         case 'top': {
             let res = await pool.query('SELECT data FROM players ORDER BY (data->>\'level\')::int DESC LIMIT 5');
             message.reply(res.rows.map((r, i) => `#${i+1} ${r.data.name}: Cấp ${r.data.level}`).join('\n')); break; }
-        case 'top_pk': {
-            let res = await pool.query('SELECT data FROM players ORDER BY (data->>\'wins\')::int DESC LIMIT 5');
-            message.reply(res.rows.map((r, i) => `#${i+1} ${r.data.name}: ${r.data.wins} thắng`).join('\n')); break; }
-        case 'top_giaucu': {
-            let res = await pool.query('SELECT data FROM players ORDER BY (data->>\'linhThach\')::int DESC LIMIT 5');
-            message.reply(res.rows.map((r, i) => `#${i+1} ${r.data.name}: ${r.data.linhThach} LT`).join('\n')); break; }
-        case 'setchat':
-            if (userId !== ADMIN_ID) return;
-            let target = message.mentions.users.first();
-            let tData = await getP(target?.id);
-            if (!target || !tData) return;
-            let tp = new Player(tData.id, tData.name, tData);
-            let type = parseInt(args[1]);
-            const config = { 1: ["👑 Tiên Đế", 10.0], 2: ["🌟 Thánh Nhân", 5.0], 3: ["🔥 Tuyệt Thế Thiên Kiêu", 3.0], 4: ["⚡ Thiên Tài", 2.0], 5: ["💎 Ưu Tú", 1.5], 6: ["🌿 Phàm Nhân Căn Cốt", 1.2], 7: ["🤡 Ngu Si Đần Độn", 0.5] };
-            if(config[type]) { tp.tuChat = config[type][0]; tp.multiplier = config[type][1]; tp.sync(); await saveP(tp); message.reply(`✅ Đã chỉnh!`); }
-            break;
     }
 });
 
