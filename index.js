@@ -39,10 +39,7 @@ function createBicanh() {
     if (channel) channel.send(`📢 **Bí cảnh ${currentBicanh.diff} xuất hiện!** Yêu cầu: ${currentBicanh.requiredAtk} ATK. Gõ \`!thamgia\`!`);
 }
 
-client.on('ready', () => {
-    console.log(`Tiên giới đã khai mở!`);
-    setInterval(createBicanh, 300000); 
-});
+client.on('ready', () => { console.log(`Tiên giới đã khai mở!`); setInterval(createBicanh, 300000); });
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.startsWith('!')) return;
@@ -59,44 +56,56 @@ client.on('messageCreate', async (message) => {
     if (!players.has(userId)) return message.reply('⚠️ Gõ `!dangky` trước!');
     let p = players.get(userId);
 
+    // XỬ LÝ ADMIN
     if (['setchat', 'adminbuff', 'reset'].includes(command)) {
         if (userId !== ADMIN_ID) return message.reply('❌ Chỉ Admin!');
         let target = message.mentions.users.first();
+        if (!target) return message.reply('❌ Cần tag người chơi!');
+        if (!players.has(target.id)) return message.reply('❌ Người chơi này chưa đăng ký!');
+
         if (command === 'setchat') {
-            let pSet = players.get(target.id);
             let type = parseInt(args[1]);
             const config = { 1: ["👑 Tiên Đế", 10.0], 2: ["🌟 Thánh Nhân", 5.0], 7: ["🤡 Ngu Si", 0.5] };
-            if(config[type]) { pSet.tuChat = config[type][0]; pSet.multiplier = config[type][1]; pSet.updateStats(); message.reply("Đã chỉnh!"); }
-        } else if (command === 'adminbuff') { players.get(target.id).level += 10; players.get(target.id).updateStats(); message.reply("Đã buff!"); }
-        else if (command === 'reset') { players.delete(target.id); message.reply("Đã xóa!"); }
+            if(config[type]) {
+                let pSet = players.get(target.id);
+                pSet.tuChat = config[type][0]; pSet.multiplier = config[type][1];
+                pSet.updateStats(); pSet.updateRealm();
+                message.reply(`✅ Đã chỉnh ${target.username} thành ${pSet.tuChat}!`);
+            } else message.reply('❌ Nhập số: 1(Tiên Đế), 2(Thánh Nhân), 7(Ngu Si)');
+        } else if (command === 'adminbuff') {
+            players.get(target.id).level += 10; players.get(target.id).updateStats(); players.get(target.id).updateRealm();
+            message.reply("✅ Đã buff 10 cấp!");
+        } else if (command === 'reset') {
+            players.delete(target.id);
+            message.reply(`🗑️ Đã xóa dữ liệu của ${target.username}!`);
+        }
         return;
     }
 
+    // CÁC LỆNH NGƯỜI CHƠI
     switch (command) {
-        case 'help':
-            message.reply(`📜 **TÀNG KINH CÁC**\n⚔️ **Cơ bản:** \`!dangky\`, \`!tui\`, \`!tuluyen\`, \`!dotpha\`\n🔥 **PK & Bí cảnh:** \`!thamgia\`, \`!pk @user\`\n🏠 **Động phủ:** \`!nangcap\`\n🏆 **BXH:** \`!top\`, \`!top_pk\`, \`!top_giaucu\``);
-            break;
+        case 'help': message.reply(`📜 **Lệnh:** !tui, !tuluyen, !dotpha, !thamgia, !pk @user, !nangcap, !top, !top_pk, !top_giaucu`); break;
         case 'tui':
             p.updateStats();
-            message.reply(`🎒 **Thông tin đạo hữu ${p.name}**\n🧬 Tư chất: **${p.tuChat}** (x${p.multiplier})\n🔮 Cảnh giới: ${p.realm}\n⚔️ Sức mạnh: ${p.atk} ATK (${p.weapon.name})\n💰 Linh Thạch: ${p.linhThach} LT\n🩸 Chiến tích: ${p.wins} thắng\n🏠 Động Phủ: Cấp ${p.dongPhuLevel}`);
+            message.reply(`🎒 **${p.name}**\n🧬 Tư chất: ${p.tuChat} (x${p.multiplier})\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK (${p.weapon.name})\n💰 ${p.linhThach} LT\n🩸 ${p.wins} thắng\n🏠 Động Phủ cấp ${p.dongPhuLevel}`);
             break;
         case 'tuluyen':
-            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm! Hãy đợi 10s.');
+            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!');
             let gain = Math.floor((Math.random() * 16 + 15) * p.multiplier * (1 + p.dongPhuLevel * 0.2));
             p.exp += gain; p.lastTrain = Date.now();
-            message.reply(`🧘‍♂️ **Tu luyện thành công!**\n✨ Nhận: **+${gain} EXP**\n🔮 Cảnh giới: **${p.realm}**\n📈 Tiến độ: **${p.exp}/${p.level * 100} EXP**`);
+            message.reply(`🧘‍♂️ **Tu luyện:** +${gain} EXP\n🔮 ${p.realm}\n📈 Tiến độ: ${p.exp}/${p.level * 100} EXP`);
             break;
         case 'dotpha':
             let cost = p.level * 100;
             if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`);
-            if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.updateRealm(); p.updateStats(); message.reply(`🎉 Lên **${p.realm}**!`); }
+            if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.updateRealm(); p.updateStats(); message.reply(`🎉 Lên ${p.realm}!`); }
             else { p.exp = Math.floor(p.exp * 0.8); message.reply(`💥 Đột phá thất bại!`); }
             break;
         case 'thamgia':
             if (!currentBicanh) return message.reply('❌ Không có bí cảnh!');
             if (p.atk < currentBicanh.requiredAtk) return message.reply(`❌ Cần ${currentBicanh.requiredAtk} ATK.`);
             p.linhThach += currentBicanh.reward;
-            if (Math.random() < 0.3) { p.weapon = { name: "Thần Kiếm", atk: 150 }; p.updateStats(); message.reply(`✨ Rơi đồ!`); }
+            if (Math.random() < 0.3) { p.weapon = { name: "Thần Kiếm", atk: 150 }; p.updateStats(); message.reply(`✨ Rơi Thần Kiếm!`); }
             else message.reply(`✅ Nhận ${currentBicanh.reward} LT!`);
             currentBicanh = null;
             break;
@@ -105,32 +114,23 @@ client.on('messageCreate', async (message) => {
             if (!target || !players.has(target.id)) return message.reply('❌ Tag đối thủ!');
             let p2 = players.get(target.id);
             if (p.linhThach < 50 || p2.linhThach < 50) return message.reply('❌ Cần 50 LT cược!');
-            if (Math.random() * (p.atk + p2.atk) < p.atk) { p.linhThach += 50; p2.linhThach -= 50; p.wins++; message.reply(`⚔️ ${p.name} thắng!`); }
-            else { p2.linhThach += 50; p.linhThach -= 50; p2.wins++; message.reply(`💀 ${p.name} thua!`); }
+            if (Math.random() * (p.atk + p2.atk) < p.atk) { p.linhThach += 50; p2.linhThach -= 50; p.wins++; message.reply(`⚔️ Thắng!`); }
+            else { p2.linhThach += 50; p.linhThach -= 50; p2.wins++; message.reply(`💀 Thua!`); }
             break;
         case 'nangcap':
             let nCost = p.dongPhuLevel * 500;
             if (p.linhThach < nCost) return message.reply(`❌ Cần ${nCost} LT!`);
-            p.linhThach -= nCost; p.dongPhuLevel++; message.reply(`🏠 Động phủ lên cấp ${p.dongPhuLevel}!`);
+            p.linhThach -= nCost; p.dongPhuLevel++; message.reply(`🏠 Động phủ cấp ${p.dongPhuLevel}!`);
             break;
-        case 'top':
-            const top = [...players.values()].sort((a, b) => b.level - a.level).slice(0, 5);
-            message.reply(top.map((pl, i) => `#${i + 1} ${pl.name}: ${pl.realm}`).join('\n') || 'Chưa ai!');
-            break;
-        case 'top_pk':
-            const topPk = [...players.values()].sort((a, b) => b.wins - a.wins).slice(0, 5);
-            message.reply(topPk.map((pl, i) => `#${i + 1} ${pl.name}: ${pl.wins} thắng`).join('\n') || 'Chưa ai!');
-            break;
-        case 'top_giaucu':
-            const topRich = [...players.values()].sort((a, b) => b.linhThach - a.linhThach).slice(0, 5);
-            message.reply(topRich.map((pl, i) => `#${i + 1} ${pl.name}: ${pl.linhThach} LT`).join('\n') || 'Chưa ai!');
-            break;
+        case 'top': message.reply([...players.values()].sort((a,b)=>b.level-a.level).slice(0,5).map((pl,i)=>`#${i+1} ${pl.name}: ${pl.realm}`).join('\n') || 'Chưa ai!'); break;
+        case 'top_pk': message.reply([...players.values()].sort((a,b)=>b.wins-a.wins).slice(0,5).map((pl,i)=>`#${i+1} ${pl.name}: ${pl.wins} trận`).join('\n') || 'Chưa ai!'); break;
+        case 'top_giaucu': message.reply([...players.values()].sort((a,b)=>b.linhThach-a.linhThach).slice(0,5).map((pl,i)=>`#${i+1} ${pl.name}: ${pl.linhThach} LT`).join('\n') || 'Chưa ai!'); break;
     }
 });
 
 const express = require('express');
 const app = express();
-app.get('/', (req, res) => res.send('Bot đang tu tiên!'));
+app.get('/', (req, res) => res.send('Tiên giới đang online!'));
 app.listen(3000, () => console.log(`Web server chạy tại port 3000`));
 
 client.login(process.env.DISCORD_TOKEN);
