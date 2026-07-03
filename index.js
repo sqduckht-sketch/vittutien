@@ -25,14 +25,13 @@ class Player {
         else if (rand < 0.55) { this.tuChat = "🌿 Phàm Nhân Căn Cốt"; this.multiplier = 1.2; }
         else { this.tuChat = "🤡 Ngu Si Đần Độn"; this.multiplier = 0.5; }
         
-        this.updateStats(); this.updateRealm();
+        this.sync();
     }
-    updateStats() {
+    
+    sync() {
         this.atk = 10 + Math.floor(this.level * 5 * this.multiplier) + this.weapon.atk;
         this.maxHp = 100 + Math.floor(this.level * 20 * this.multiplier);
         this.hp = this.maxHp;
-    }
-    updateRealm() {
         let rIdx = Math.floor((this.level - 1) / 10);
         this.realm = rIdx >= realms.length ? "Tiên Nhân" : `${realms[rIdx]} Tầng ${((this.level - 1) % 10) + 1}`;
     }
@@ -67,11 +66,12 @@ client.on('messageCreate', async (message) => {
         if (userId !== ADMIN_ID) return;
         let target = message.mentions.users.first();
         if (!target || !players.has(target.id)) return;
+        let targetP = players.get(target.id);
         if (command === 'setchat') {
             let type = parseInt(args[1]);
             const config = { 1: ["👑 Tiên Đế", 10.0], 2: ["🌟 Thánh Nhân", 5.0], 7: ["🤡 Ngu Si", 0.5] };
-            if(config[type]) { p.tuChat = config[type][0]; p.multiplier = config[type][1]; p.updateStats(); message.reply(`✅ Đã chỉnh tư chất!`); }
-        } else if (command === 'adminbuff') { p.level += 10; p.updateStats(); message.reply("✅ Buff 10 cấp!"); }
+            if(config[type]) { targetP.tuChat = config[type][0]; targetP.multiplier = config[type][1]; targetP.sync(); message.reply(`✅ Đã chỉnh tư chất!`); }
+        } else if (command === 'adminbuff') { targetP.level += 10; targetP.sync(); message.reply("✅ Buff 10 cấp!"); }
         else if (command === 'reset') { players.delete(target.id); message.reply(`🗑️ Đã xóa!`); }
         return;
     }
@@ -79,14 +79,24 @@ client.on('messageCreate', async (message) => {
     // NGƯỜI CHƠI
     switch (command) {
         case 'help': message.reply(`📜 **Lệnh:** !tui, !tuluyen, !dotpha, !thamgia, !pk @user, !nangcap, !top, !top_pk, !top_giaucu, !nhan, !luyenkhi`); break;
-        case 'tui': p.updateStats(); message.reply(`🎒 **${p.name}**\n🧬 ${p.tuChat} (x${p.multiplier})\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK\n💰 ${p.linhThach} LT\n🏠 Động Phủ: ${p.dongPhuLevel}`); break;
+        case 'tui': p.sync(); message.reply(`🎒 **${p.name}**\n🧬 ${p.tuChat} (x${p.multiplier})\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK\n💰 ${p.linhThach} LT\n🏠 Động Phủ: ${p.dongPhuLevel}`); break;
         case 'tuluyen': 
             if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!'); 
             let gain = Math.floor((Math.random() * 16 + 15) * p.multiplier * (1 + p.dongPhuLevel * 0.2)); 
             p.exp += gain; p.lastTrain = Date.now(); 
             message.reply(`🧘‍♂️ **Tu luyện:** +${gain} EXP\n🔮 ${p.realm}\n📈 Tiến độ: ${p.exp}/${p.level * 100} EXP`); 
             break;
-        case 'dotpha': let cost = p.level * 100; if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`); if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.updateStats(); message.reply(`🎉 Lên ${p.realm}!`); } else { p.exp = Math.floor(p.exp * 0.8); message.reply(`💥 Thất bại!`); } break;
+        case 'dotpha': 
+            let cost = p.level * 100; 
+            if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`); 
+            if (Math.random() < 0.7) { 
+                p.exp -= cost; p.level += 1; p.sync(); 
+                message.reply(`🎉 Chúc mừng! Bạn đã đột phá lên **${p.realm}**!`); 
+            } else { 
+                p.exp = Math.floor(p.exp * 0.8); 
+                message.reply(`💥 Đột phá thất bại! Bạn bị tổn hại kinh mạch, mất 20% EXP.`); 
+            } 
+            break;
         case 'thamgia': if (!currentBicanh) return message.reply('❌ Không có!'); if (p.atk < currentBicanh.requiredAtk) return message.reply(`❌ Yếu quá!`); p.linhThach += currentBicanh.reward; message.reply(`✅ Nhận ${currentBicanh.reward} LT!`); currentBicanh = null; break;
         case 'pk': {
             let t = message.mentions.users.first();
