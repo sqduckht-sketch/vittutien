@@ -67,16 +67,24 @@ client.on('messageCreate', async (message) => {
     if (!players.has(userId)) return message.reply('⚠️ Hãy gõ `!dangky` trước nhé!');
     let p = players.get(userId);
 
-    // Khối switch đã nằm ĐÚNG trong hàm messageCreate
     switch (command) {
         case 'help':
             const helpEmbed = new EmbedBuilder().setColor(0x0099FF).setTitle('📜 TÀNG KINH CÁC')
-                .addFields({ name: '⚔️ Lệnh', value: '`!tui`, `!tuluyen`, `!dotpha`, `!thamgia`, `!top`' });
+                .addFields(
+                    { name: '⚔️ Cơ bản', value: '`!tui`, `!tuluyen`, `!dotpha`, `!thamgia`, `!top`' },
+                    { name: '👑 Admin', value: '`!setchat`, `!adminbuff`, `!reset`' }
+                );
             message.reply({ embeds: [helpEmbed] });
             break;
         case 'tui':
             p.updateStats();
             message.reply(`🎒 **${p.name}**\n🔮 ${p.realm}\n❤️ HP: ${p.hp}/${p.maxHp} | ⚔️ ATK: ${p.atk} (${p.weapon.name})\n✨ EXP: ${p.exp}/${p.level * 100}\n🧬 ${p.tuChat}\n💰 ${p.linhThach} LT`);
+            break;
+        case 'top':
+            const top = [...players.values()].sort((a, b) => b.level - a.level).slice(0, 5);
+            const embed = new EmbedBuilder().setTitle('🏆 BẢNG XẾP HẠNG').setColor(0xFFD700);
+            top.forEach((pl, i) => embed.addFields({ name: `#${i + 1} ${pl.name}`, value: `Cấp: ${pl.level} - ${pl.realm}` }));
+            message.reply({ embeds: [embed] });
             break;
         case 'tuluyen':
             if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!');
@@ -104,10 +112,24 @@ client.on('messageCreate', async (message) => {
             message.reply(msg);
             currentBicanh = null;
             break;
-        case 'adminbuff':
+        case 'setchat':
             if (userId !== ADMIN_ID) return;
             let target = message.mentions.users.first();
-            if (target && players.has(target.id)) { players.get(target.id).level += 10; players.get(target.id).updateStats(); message.reply("👑 Đã buff."); }
+            if (!target || !players.has(target.id)) return;
+            let pSet = players.get(target.id);
+            let type = parseInt(args[1]);
+            const config = { 1: ["👑 Tiên Đế", 10.0], 2: ["🌟 Thánh Nhân", 5.0], 3: ["🔥 Tuyệt Thế Thiên Kiêu", 3.0], 4: ["⚡ Thiên Tài", 2.0], 5: ["💎 Ưu Tú", 1.5], 6: ["🌿 Phàm Nhân Căn Cốt", 1.2], 7: ["🤡 Ngu Si Đần Độn", 0.5] };
+            if(config[type]) { pSet.tuChat = config[type][0]; pSet.multiplier = config[type][1]; pSet.updateStats(); message.reply(`👑 Đã chỉnh tư chất của ${target.username} thành **${pSet.tuChat}**!`); }
+            break;
+        case 'adminbuff':
+            if (userId !== ADMIN_ID) return;
+            let tBuff = message.mentions.users.first();
+            if (tBuff && players.has(tBuff.id)) { players.get(tBuff.id).level += 10; players.get(tBuff.id).updateStats(); message.reply("👑 Đã buff 10 cấp."); }
+            break;
+        case 'reset':
+            if (userId !== ADMIN_ID) return;
+            let t = message.mentions.users.first();
+            if (t && players.has(t.id)) { players.delete(t.id); message.reply(`🗑️ Đã xóa: ${t.username}`); }
             break;
     }
 });
