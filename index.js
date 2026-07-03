@@ -36,6 +36,10 @@ class Player {
     }
 }
 
+client.once('ready', () => {
+    console.log(`✅ Bot đã kết nối thành công tới Discord dưới tên: ${client.user.tag}`);
+});
+
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.startsWith('!')) return;
     const args = message.content.slice(1).trim().split(/ +/);
@@ -102,6 +106,6 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN).catch(e => console.error("❌ Lỗi Token:", e));
 const app = express();
 app.listen(process.env.PORT || 3000);
