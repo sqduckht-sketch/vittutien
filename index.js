@@ -1,16 +1,14 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
-// --- CẤU HÌNH ---
 const players = new Map();
 const realms = ["Luyện Khí", "Trúc Cơ", "Kết Đan", "Nguyên Anh", "Hóa Thần", "Luyện Hư", "Hợp Thể", "Độ Kiếp", "Đại Thừa"];
 const ADMIN_ID = '1126092277220122634';
 const CHANNEL_ID = '1522097762555138089';
 let currentBicanh = null;
 
-// --- CLASS PLAYER ---
 class Player {
     constructor(id, name) {
         const rand = Math.random();
@@ -33,7 +31,6 @@ class Player {
     }
 }
 
-// --- HÀM BÍ CẢNH ---
 function createBicanh() {
     const diffs = ["Thấp", "Trung bình", "Cao", "Địa ngục"];
     const idx = Math.floor(Math.random() * diffs.length);
@@ -47,7 +44,6 @@ client.on('ready', () => {
     setInterval(createBicanh, 300000); 
 });
 
-// --- LỆNH BOT ---
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.startsWith('!')) return;
     const args = message.content.slice(1).trim().split(/ +/);
@@ -63,7 +59,6 @@ client.on('messageCreate', async (message) => {
     if (!players.has(userId)) return message.reply('⚠️ Gõ `!dangky` trước!');
     let p = players.get(userId);
 
-    // Lệnh Admin
     if (['setchat', 'adminbuff', 'reset'].includes(command)) {
         if (userId !== ADMIN_ID) return message.reply('❌ Chỉ Admin!');
         let target = message.mentions.users.first();
@@ -83,13 +78,19 @@ client.on('messageCreate', async (message) => {
             break;
         case 'tui':
             p.updateStats();
-            message.reply(`🎒 **${p.name}**\n🔮 ${p.realm}\n⚔️ ATK: ${p.atk} (${p.weapon.name})\n💰 ${p.linhThach} LT\n🩸 Thắng: ${p.wins}\n🏠 Động Phủ: Cấp ${p.dongPhuLevel}`);
+            message.reply(`🎒 **Thông tin đạo hữu ${p.name}**\n🧬 Tư chất: **${p.tuChat}** (x${p.multiplier})\n🔮 Cảnh giới: ${p.realm}\n⚔️ Sức mạnh: ${p.atk} ATK (${p.weapon.name})\n💰 Linh Thạch: ${p.linhThach} LT\n🩸 Chiến tích: ${p.wins} thắng\n🏠 Động Phủ: Cấp ${p.dongPhuLevel}`);
             break;
         case 'tuluyen':
-            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!');
+            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm! Hãy đợi 10s.');
             let gain = Math.floor((Math.random() * 16 + 15) * p.multiplier * (1 + p.dongPhuLevel * 0.2));
             p.exp += gain; p.lastTrain = Date.now();
-            message.reply(`🧘‍♂️ Tu luyện tăng ${gain} EXP.`);
+            message.reply(`🧘‍♂️ **Tu luyện thành công!**\n✨ Nhận: **+${gain} EXP**\n🔮 Cảnh giới: **${p.realm}**\n📈 Tiến độ: **${p.exp}/${p.level * 100} EXP**`);
+            break;
+        case 'dotpha':
+            let cost = p.level * 100;
+            if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`);
+            if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.updateRealm(); p.updateStats(); message.reply(`🎉 Lên **${p.realm}**!`); }
+            else { p.exp = Math.floor(p.exp * 0.8); message.reply(`💥 Đột phá thất bại!`); }
             break;
         case 'thamgia':
             if (!currentBicanh) return message.reply('❌ Không có bí cảnh!');
@@ -127,7 +128,6 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// --- SERVER WEB (PORT 3000) ---
 const express = require('express');
 const app = express();
 app.get('/', (req, res) => res.send('Bot đang tu tiên!'));
