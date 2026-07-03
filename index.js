@@ -78,11 +78,14 @@ client.on('messageCreate', async (message) => {
 
     // NGƯỜI CHƠI
     switch (command) {
-        case 'help': 
-            message.reply(`📜 **TÀNG KINH CÁC**\n⚔️ **Cơ bản:** !tui, !tuluyen, !dotpha, !thamgia, !nhan, !luyenkhi\n🛡️ **Tương tác:** !pk @user, !nangcap\n🏆 **Bảng xếp hạng:** !top, !top_pk, !top_giaucu`); 
-            break;
+        case 'help': message.reply(`📜 **Lệnh:** !tui, !tuluyen, !dotpha, !thamgia, !pk @user, !nangcap, !top, !top_pk, !top_giaucu, !nhan, !luyenkhi`); break;
         case 'tui': p.updateStats(); message.reply(`🎒 **${p.name}**\n🧬 ${p.tuChat} (x${p.multiplier})\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK\n💰 ${p.linhThach} LT\n🏠 Động Phủ: ${p.dongPhuLevel}`); break;
-        case 'tuluyen': if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!'); p.exp += Math.floor((Math.random() * 16 + 15) * p.multiplier * (1 + p.dongPhuLevel * 0.2)); p.lastTrain = Date.now(); message.reply(`🧘‍♂️ **Tu luyện:** +EXP!`); break;
+        case 'tuluyen': 
+            if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!'); 
+            let gain = Math.floor((Math.random() * 16 + 15) * p.multiplier * (1 + p.dongPhuLevel * 0.2)); 
+            p.exp += gain; p.lastTrain = Date.now(); 
+            message.reply(`🧘‍♂️ **Tu luyện:** +${gain} EXP\n🔮 ${p.realm}\n📈 Tiến độ: ${p.exp}/${p.level * 100} EXP`); 
+            break;
         case 'dotpha': let cost = p.level * 100; if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`); if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.updateStats(); message.reply(`🎉 Lên ${p.realm}!`); } else { p.exp = Math.floor(p.exp * 0.8); message.reply(`💥 Thất bại!`); } break;
         case 'thamgia': if (!currentBicanh) return message.reply('❌ Không có!'); if (p.atk < currentBicanh.requiredAtk) return message.reply(`❌ Yếu quá!`); p.linhThach += currentBicanh.reward; message.reply(`✅ Nhận ${currentBicanh.reward} LT!`); currentBicanh = null; break;
         case 'pk': {
