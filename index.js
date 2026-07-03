@@ -53,13 +53,13 @@ client.on('messageCreate', async (message) => {
     let p = new Player(pData.id, pData.name, pData);
 
     switch (cmd) {
+        case 'help': message.reply(`📜 **Lệnh:** !tui, !tuluyen, !dotpha, !pk @user, !nangcap, !top, !top_pk, !top_giaucu, !nhan, !luyenkhi`); break;
         case 'tui': p.sync(); message.reply(`🎒 **${p.name}**\n🧬 ${p.tuChat} (x${p.multiplier})\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK\n💰 ${p.linhThach} LT\n🏠 Động Phủ: ${p.dongPhuLevel}`); break;
         case 'tuluyen': 
             if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!'); 
             let gain = Math.floor((Math.random() * 16 + 15) * p.multiplier * (1 + p.dongPhuLevel * 0.2)); 
-            p.exp += gain; p.lastTrain = Date.now(); 
-            await saveP(p);
-            message.reply(`🧘‍♂️ **Tu luyện:** +${gain} EXP\n🔮 ${p.realm}\n📈 Tiến độ: ${p.exp}/${p.level * 100} EXP`); break;
+            p.exp += gain; p.lastTrain = Date.now(); await saveP(p);
+            message.reply(`🧘‍♂️ **Tu luyện:** +${gain} EXP\n📈 Tiến độ: ${p.exp}/${p.level * 100} EXP`); break;
         case 'dotpha': 
             let cost = p.level * 100; 
             if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`); 
@@ -75,7 +75,20 @@ client.on('messageCreate', async (message) => {
             if(Math.random()*(p.atk+p2.atk) < p.atk) { p.linhThach += 50; p2.linhThach -= 50; p.wins++; await saveP(p); await saveP(p2); message.reply('⚔️ Bạn thắng 50 LT!'); } 
             else { p2.linhThach += 50; p.linhThach -= 50; p2.wins++; await saveP(p); await saveP(p2); message.reply('💀 Bạn thua 50 LT!'); }
             break; }
+        case 'nangcap': 
+            let nC = p.dongPhuLevel * 500; if(p.linhThach < nC) return message.reply(`❌ Cần ${nC} LT!`); 
+            p.linhThach -= nC; p.dongPhuLevel++; await saveP(p); message.reply(`🏠 Động phủ cấp ${p.dongPhuLevel}!`); break;
         case 'nhan': if (p.lastDaily && Date.now() - p.lastDaily < 86400000) return message.reply('⚠️ Mai nhận tiếp!'); p.linhThach += 500; p.lastDaily = Date.now(); await saveP(p); message.reply('🎁 Nhận 500 LT!'); break;
+        case 'luyenkhi': if(p.exp < 500) return message.reply('❌ Thiếu EXP!'); p.exp -= 500; p.linhThach += 200; await saveP(p); message.reply('✨ +200 LT!'); break;
+        case 'top': {
+            let res = await pool.query('SELECT data FROM players ORDER BY (data->>\'level\')::int DESC LIMIT 5');
+            message.reply(res.rows.map((r, i) => `#${i+1} ${r.data.name}: Cấp ${r.data.level}`).join('\n')); break; }
+        case 'top_pk': {
+            let res = await pool.query('SELECT data FROM players ORDER BY (data->>\'wins\')::int DESC LIMIT 5');
+            message.reply(res.rows.map((r, i) => `#${i+1} ${r.data.name}: ${r.data.wins} thắng`).join('\n')); break; }
+        case 'top_giaucu': {
+            let res = await pool.query('SELECT data FROM players ORDER BY (data->>\'linhThach\')::int DESC LIMIT 5');
+            message.reply(res.rows.map((r, i) => `#${i+1} ${r.data.name}: ${r.data.linhThach} LT`).join('\n')); break; }
         case 'setchat':
             if (userId !== ADMIN_ID) return;
             let target = message.mentions.users.first();
