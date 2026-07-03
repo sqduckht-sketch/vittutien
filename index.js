@@ -78,16 +78,25 @@ client.on('messageCreate', async (message) => {
 
     // NGƯỜI CHƠI
     switch (command) {
-        case 'help': message.reply(`📜 **Lệnh:** !tui, !tuluyen, !dotpha, !thamgia, !pk @user, !nangcap, !top, !top_pk, !top_giaucu, !cuop @user, !nhan, !luyenkhi`); break;
+        case 'help': 
+            message.reply(`📜 **TÀNG KINH CÁC**\n⚔️ **Cơ bản:** !tui, !tuluyen, !dotpha, !thamgia, !nhan, !luyenkhi\n🛡️ **Tương tác:** !pk @user, !nangcap\n🏆 **Bảng xếp hạng:** !top, !top_pk, !top_giaucu`); 
+            break;
         case 'tui': p.updateStats(); message.reply(`🎒 **${p.name}**\n🧬 ${p.tuChat} (x${p.multiplier})\n🔮 ${p.realm}\n⚔️ ${p.atk} ATK\n💰 ${p.linhThach} LT\n🏠 Động Phủ: ${p.dongPhuLevel}`); break;
         case 'tuluyen': if (Date.now() - p.lastTrain < 10000) return message.reply('⚠️ Đang tĩnh tâm!'); p.exp += Math.floor((Math.random() * 16 + 15) * p.multiplier * (1 + p.dongPhuLevel * 0.2)); p.lastTrain = Date.now(); message.reply(`🧘‍♂️ **Tu luyện:** +EXP!`); break;
         case 'dotpha': let cost = p.level * 100; if (p.exp < cost) return message.reply(`❌ Cần ${cost} EXP!`); if (Math.random() < 0.7) { p.exp -= cost; p.level += 1; p.updateStats(); message.reply(`🎉 Lên ${p.realm}!`); } else { p.exp = Math.floor(p.exp * 0.8); message.reply(`💥 Thất bại!`); } break;
         case 'thamgia': if (!currentBicanh) return message.reply('❌ Không có!'); if (p.atk < currentBicanh.requiredAtk) return message.reply(`❌ Yếu quá!`); p.linhThach += currentBicanh.reward; message.reply(`✅ Nhận ${currentBicanh.reward} LT!`); currentBicanh = null; break;
-        case 'pk': let t = message.mentions.users.first(); if(!t || !players.has(t.id)) return message.reply('❌ Tag đối thủ!'); let p2 = players.get(t.id); if(p.linhThach < 50 || p2.linhThach < 50) return message.reply('❌ Cần 50 LT cược!'); if(Math.random()*(p.atk+p2.atk) < p.atk) { p.linhThach += 50; p2.linhThach -= 50; p.wins++; message.reply('⚔️ Thắng!'); } else { p2.linhThach += 50; p.linhThach -= 50; p2.wins++; message.reply('💀 Thua!'); } break;
+        case 'pk': {
+            let t = message.mentions.users.first();
+            if(!t || !players.has(t.id)) return message.reply('❌ Tag đối thủ!');
+            let p2 = players.get(t.id);
+            if(p.linhThach < 50 || p2.linhThach < 50) return message.reply('❌ Cần 50 LT cược!');
+            if(Math.random()*(p.atk+p2.atk) < p.atk) { p.linhThach += 50; p2.linhThach -= 50; p.wins++; message.reply('⚔️ Thắng!'); } 
+            else { p2.linhThach += 50; p.linhThach -= 50; p2.wins++; message.reply('💀 Thua!'); }
+            break;
+        }
         case 'nangcap': let nC = p.dongPhuLevel * 500; if(p.linhThach < nC) return message.reply(`❌ Cần ${nC} LT!`); p.linhThach -= nC; p.dongPhuLevel++; message.reply(`🏠 Động phủ cấp ${p.dongPhuLevel}!`); break;
         case 'nhan': if (p.lastDaily && Date.now() - p.lastDaily < 86400000) return message.reply('⚠️ Mai nhận tiếp!'); p.linhThach += 500; p.lastDaily = Date.now(); message.reply('🎁 Nhận 500 LT!'); break;
         case 'luyenkhi': if(p.exp < 500) return message.reply('❌ Thiếu EXP!'); p.exp -= 500; p.linhThach += 200; message.reply('✨ +200 LT!'); break;
-        case 'cuop': let v = message.mentions.users.first(); if (!v || !players.has(v.id)) return message.reply('❌ Tag nạn nhân!'); let p2 = players.get(v.id); if (p.level < p2.level) return message.reply('❌ Cướp cao thủ à?'); if (Math.random() < 0.5) { let l = Math.floor(p2.linhThach * 0.2); p.linhThach += l; p2.linhThach -= l; message.reply(`💰 Cướp được ${l} LT!`); } else message.reply(`👮 Bị bắt!`); break;
         case 'top': message.reply([...players.values()].sort((a,b)=>b.level-a.level).slice(0,5).map((pl,i)=>`#${i+1} ${pl.name}: Cấp ${pl.level}`).join('\n')); break;
         case 'top_pk': message.reply([...players.values()].sort((a,b)=>b.wins-a.wins).slice(0,5).map((pl,i)=>`#${i+1} ${pl.name}: ${pl.wins} thắng`).join('\n')); break;
         case 'top_giaucu': message.reply([...players.values()].sort((a,b)=>b.linhThach-a.linhThach).slice(0,5).map((pl,i)=>`#${i+1} ${pl.name}: ${pl.linhThach} LT`).join('\n')); break;
